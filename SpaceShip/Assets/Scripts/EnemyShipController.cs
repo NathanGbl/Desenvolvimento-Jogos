@@ -21,15 +21,15 @@ namespace SpaceShipGame
                 return;
             }
 
-            transform.position += Vector3.down * (1.2f * Time.deltaTime);
-            transform.position += Vector3.right * (Mathf.Sin(Time.time * 3f + transform.position.y) * 0.9f * Time.deltaTime);
+            transform.position += Vector3.left * (2.1f * Time.deltaTime);
+            transform.position += Vector3.up * (Mathf.Sin(Time.time * 3f + transform.position.x) * 0.9f * Time.deltaTime);
 
             if (Random.value < fireChancePerSecond * Time.deltaTime)
             {
                 Fire();
             }
 
-            if (transform.position.y < -5.3f)
+            if (transform.position.x < -8.8f)
             {
                 SpaceShipGameManager.Instance.EndGame("DefeatScene");
             }
@@ -39,8 +39,8 @@ namespace SpaceShipGame
         {
             GameObject bullet = new GameObject("EnemyBullet");
             bullet.tag = "EnemyBullet";
-            bullet.transform.position = transform.position + Vector3.down * 0.35f;
-            bullet.transform.localScale = new Vector3(0.1f, 0.28f, 1f);
+            bullet.transform.position = transform.position + Vector3.left * 0.5f;
+            bullet.transform.localScale = new Vector3(60f, 20f, 1f);
 
             SpriteRenderer sr = bullet.AddComponent<SpriteRenderer>();
             sr.sprite = SpaceShipSpriteFactory.GetSquareSprite();

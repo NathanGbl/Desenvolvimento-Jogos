@@ -161,7 +161,7 @@ namespace SpaceShipGame
 
             GameObject player = new GameObject("PlayerShip");
             player.transform.SetParent(root.transform);
-            player.transform.position = new Vector3(0f, -3.8f, 0f);
+            player.transform.position = new Vector3(-7.2f, 0f, 0f);
             player.tag = "Player";
 
             SpriteRenderer playerRenderer = player.AddComponent<SpriteRenderer>();
@@ -181,6 +181,8 @@ namespace SpaceShipGame
                 playerRenderer.color = new Color(0.2f, 0.9f, 1f);
                 player.transform.localScale = new Vector3(0.8f, 0.55f, 1f);
             }
+
+            player.transform.rotation = Quaternion.identity;
 
             BoxCollider2D playerCollider = player.AddComponent<BoxCollider2D>();
             playerCollider.isTrigger = true;
@@ -282,7 +284,7 @@ namespace SpaceShipGame
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Return))
+            if (SpaceShipInput.SubmitPressedThisFrame())
             {
                 SceneManager.LoadScene(targetScene);
             }

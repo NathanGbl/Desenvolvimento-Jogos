@@ -7,7 +7,7 @@ namespace SpaceShipGame
         [SerializeField] private float speed = 7.5f;
         [SerializeField] private float fireCooldown = 0.18f;
 
-        private float lastFireTime;
+        private float nextFireTime;
 
         private void Update()
         {
@@ -16,21 +16,22 @@ namespace SpaceShipGame
                 return;
             }
 
-            float horizontal = Input.GetAxisRaw("Horizontal");
-            float vertical = Input.GetAxisRaw("Vertical");
+            float horizontal = SpaceShipInput.HorizontalRaw();
+            float vertical = SpaceShipInput.VerticalRaw();
 
             Vector3 delta = new Vector3(horizontal, vertical, 0f) * (speed * Time.deltaTime);
             transform.position += delta;
 
             Vector3 pos = transform.position;
-            pos.x = Mathf.Clamp(pos.x, -4.6f, 4.6f);
-            pos.y = Mathf.Clamp(pos.y, -4.4f, 1.4f);
+            pos.x = Mathf.Clamp(pos.x, -8.2f, -1.2f);
+            pos.y = Mathf.Clamp(pos.y, -4.5f, 4.5f);
             transform.position = pos;
 
-            if (Input.GetKey(KeyCode.Space) && Time.time - lastFireTime > fireCooldown)
+            bool wantsFire = SpaceShipInput.FireHeld() || SpaceShipInput.FirePressedThisFrame();
+            if (wantsFire && Time.time >= nextFireTime)
             {
-                lastFireTime = Time.time;
                 Fire();
+                nextFireTime = Time.time + fireCooldown;
             }
         }
 
@@ -38,12 +39,12 @@ namespace SpaceShipGame
         {
             GameObject bullet = new GameObject("PlayerBullet");
             bullet.tag = "PlayerBullet";
-            bullet.transform.position = transform.position + Vector3.up * 0.45f;
-            bullet.transform.localScale = new Vector3(0.12f, 0.35f, 1f);
+            bullet.transform.position = transform.position + Vector3.right * 0.7f;
+            bullet.transform.localScale = new Vector3(70f, 22f, 1f);
 
             SpriteRenderer sr = bullet.AddComponent<SpriteRenderer>();
             sr.sprite = SpaceShipSpriteFactory.GetSquareSprite();
-            sr.color = new Color(0.7f, 1f, 1f);
+            sr.color = new Color(0.2f, 1f, 1f);
             sr.sortingOrder = 8;
 
             BoxCollider2D collider = bullet.AddComponent<BoxCollider2D>();

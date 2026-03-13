@@ -52,7 +52,7 @@ namespace SpaceShipGame
                 return;
             }
 
-            bool wantsSlow = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            bool wantsSlow = SpaceShipInput.SlowHeld();
             if (wantsSlow && slowEnergy > 0f)
             {
                 Time.timeScale = 0.45f;
@@ -122,7 +122,7 @@ namespace SpaceShipGame
                 canvasObj.AddComponent<GraphicRaycaster>();
             }
 
-            scoreText = CreateHudText(canvas.transform, "Score", new Vector2(0.03f, 0.95f), TextAnchor.MiddleLeft);
+            scoreText = CreateHudText(canvas.transform, "Score", new Vector2(0.34f, 0.95f), TextAnchor.MiddleLeft);
             livesText = CreateHudText(canvas.transform, "Lives", new Vector2(0.97f, 0.95f), TextAnchor.MiddleRight);
             slowText = CreateHudText(canvas.transform, "Slow", new Vector2(0.5f, 0.95f), TextAnchor.MiddleCenter);
         }

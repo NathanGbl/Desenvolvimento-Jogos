@@ -46,10 +46,10 @@ namespace SpaceShipGame
 
         private void SpawnEnemy()
         {
-            float x = Random.Range(-4.5f, 4.5f);
+            float y = Random.Range(-4.5f, 4.5f);
             GameObject enemy = new GameObject("EnemyShip");
             enemy.tag = "Enemy";
-            enemy.transform.position = new Vector3(x, 5.5f, 0f);
+            enemy.transform.position = new Vector3(9.2f, y, 0f);
 
             SpriteRenderer sr = enemy.AddComponent<SpriteRenderer>();
             sr.sortingOrder = 6;

@@ -16,9 +16,9 @@ namespace SpaceShipGame
         private void Update()
         {
             float direction = owner == ProjectileOwner.Player ? 1f : -1f;
-            transform.position += Vector3.up * (direction * speed * Time.deltaTime);
+            transform.position += Vector3.right * (direction * speed * Time.deltaTime);
 
-            if (transform.position.y > 6f || transform.position.y < -6f)
+            if (transform.position.x > 10.5f || transform.position.x < -10.5f)
             {
                 Destroy(gameObject);
             }
