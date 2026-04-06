@@ -1,40 +1,39 @@
 using UnityEngine;
 
-public class ParallaxLayer : MonoBehaviour
+namespace OCaminhoDoPeregrino.World
 {
-    [SerializeField] private Transform target;
-    [SerializeField] private float parallaxMultiplier = 0.3f;
-    [SerializeField] private bool lockY = true;
-
-    private Vector3 lastTargetPosition;
-
-    private void Start()
+    public class ParallaxLayer : MonoBehaviour
     {
-        if (target == null)
+        [SerializeField] private Transform targetCamera;
+        [SerializeField] private float parallaxFactor = 0.5f;
+        [SerializeField] private bool lockY;
+
+        private Vector3 lastCameraPosition;
+
+        private void Start()
         {
-            GameObject player = GameObject.FindGameObjectWithTag("Player");
-            if (player != null)
+            if (targetCamera == null && Camera.main != null)
             {
-                target = player.transform;
+                targetCamera = Camera.main.transform;
+            }
+
+            if (targetCamera != null)
+            {
+                lastCameraPosition = targetCamera.position;
             }
         }
 
-        if (target != null)
+        private void LateUpdate()
         {
-            lastTargetPosition = target.position;
-        }
-    }
+            if (targetCamera == null)
+            {
+                return;
+            }
 
-    private void LateUpdate()
-    {
-        if (target == null)
-        {
-            return;
+            Vector3 cameraDelta = targetCamera.position - lastCameraPosition;
+            Vector3 translation = new Vector3(cameraDelta.x * parallaxFactor, lockY ? 0f : cameraDelta.y * parallaxFactor, 0f);
+            transform.position += translation;
+            lastCameraPosition = targetCamera.position;
         }
-
-        Vector3 delta = target.position - lastTargetPosition;
-        Vector3 movement = new Vector3(delta.x * parallaxMultiplier, lockY ? 0f : delta.y * parallaxMultiplier, 0f);
-        transform.position += movement;
-        lastTargetPosition = target.position;
     }
 }

@@ -6,14 +6,20 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/Pilgrim_Start.unity
-    guid: 9213d84543df4d66b162727579a86755
+    path: Assets/Scenes/SampleScene.unity
+    guid: 8c9cfa26abfee488c85f1582747f6a02
   - enabled: 1
-    path: Assets/Scenes/Pilgrim_Chapter01.unity
-    guid: 274195a13b354d629cad5b31dbf44688
+    path: Assets/Scenes/Level_01.unity
+    guid: 2f5c8db860bf4772a9630d2f83643b18
   - enabled: 1
-    path: Assets/Scenes/Pilgrim_Sanctuary.unity
-    guid: 106d1fbc9be74cdbb7607658a6ca6dc8
+    path: Assets/Scenes/Level_02.unity
+    guid: adf48ef6d74f4518ab1c86b655dd7fdf
+  - enabled: 1
+    path: Assets/Scenes/Victory.unity
+    guid: 0fc66aa42cf84fca8b1f74c83757d76f
+  - enabled: 1
+    path: Assets/Scenes/Defeat.unity
+    guid: 46582dbb30df437ab878f1d4bc2de211
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0

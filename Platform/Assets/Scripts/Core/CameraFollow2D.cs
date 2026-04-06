@@ -1,21 +1,30 @@
 using UnityEngine;
 
-public class CameraFollow2D : MonoBehaviour
+namespace OCaminhoDoPeregrino.Core
 {
-    [SerializeField] private Transform target;
-    [SerializeField] private Vector3 offset = new Vector3(0f, 1f, -10f);
-    [SerializeField] private float smoothTime = 0.15f;
-
-    private Vector3 velocity;
-
-    private void LateUpdate()
+    public class CameraFollow2D : MonoBehaviour
     {
-        if (target == null)
+        [SerializeField] private Transform target;
+        [SerializeField] private Vector3 offset = new Vector3(0f, 1f, -10f);
+        [SerializeField] private float smoothTime = 0.18f;
+
+        private Vector3 velocity;
+
+        public void SetTarget(Transform newTarget)
         {
-            return;
+            target = newTarget;
         }
 
-        Vector3 targetPosition = target.position + offset;
-        transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime);
+        private void LateUpdate()
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            Vector3 targetPosition = target.position + offset;
+            targetPosition.z = transform.position.z;
+            transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime);
+        }
     }
 }

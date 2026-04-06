@@ -1,263 +1,187 @@
 using UnityEngine;
+using OCaminhoDoPeregrino.Core;
 
-[RequireComponent(typeof(Rigidbody2D))]
-public class PlayerMovement : MonoBehaviour
+namespace OCaminhoDoPeregrino.Player
 {
-    [Header("Movimento")]
-    [SerializeField] private float moveSpeed = 7f;
-    [SerializeField] private float jumpForce = 13f;
-    [SerializeField] private float airControlMultiplier = 0.85f;
-
-    [Header("Dash")]
-    [SerializeField] private float dashSpeed = 16f;
-    [SerializeField] private float dashDuration = 0.16f;
-    [SerializeField] private float dashCooldown = 0.6f;
-
-    [Header("Ground Check")]
-    [SerializeField] private Transform groundCheck;
-    [SerializeField] private float groundCheckRadius = 0.2f;
-    [SerializeField] private LayerMask groundMask;
-
-    [Header("Camera")]
-    [SerializeField] private bool autoFollowMainCamera = true;
-    [SerializeField] private Vector3 cameraOffset = new Vector3(0f, 0.8f, -10f);
-
-    [Header("Fall Boundary")]
-    [SerializeField] private float deathYThreshold = -10f;
-
-    private Rigidbody2D rb;
-    private Camera mainCam;
-    private Collider2D[] selfColliders;
-
-    private float horizontal;
-    private bool jumpBuffered;
-    private bool grounded;
-    private int airJumpCount;
-
-    private bool isDashing;
-    private float dashTimer;
-    private float dashCooldownTimer;
-    private float dashDirection;
-
-    public bool IsFacingRight { get; private set; } = true;
-    public bool IsDashing => isDashing;
-
-    private void Awake()
+    [RequireComponent(typeof(Rigidbody2D))]
+    public class PlayerMovement : MonoBehaviour
     {
-        rb = GetComponent<Rigidbody2D>();
-        rb.bodyType = RigidbodyType2D.Dynamic;
-        rb.gravityScale = 3f;
-        rb.freezeRotation = true;
+        [Header("Movement")]
+        [SerializeField] private float moveSpeed = 6f;
+        [SerializeField] private float airControlMultiplier = 0.8f;
 
-        selfColliders = GetComponentsInChildren<Collider2D>();
-        mainCam = Camera.main;
-    }
+        [Header("Jump")]
+        [SerializeField] private float jumpForce = 12f;
+        [SerializeField] private float coyoteTime = 0.1f;
+        [SerializeField] private float jumpBufferTime = 0.1f;
+        [SerializeField] private Transform groundCheck;
+        [SerializeField] private float groundCheckRadius = 0.18f;
+        [SerializeField] private LayerMask groundLayer;
 
-    private void Start()
-    {
-        if (autoFollowMainCamera)
+        [Header("Dash")]
+        [SerializeField] private float dashSpeed = 16f;
+        [SerializeField] private float dashDuration = 0.18f;
+        [SerializeField] private float dashCooldown = 0.7f;
+
+        [Header("Penalty")]
+        [SerializeField] private int maxHealth = 3;
+
+        private Rigidbody2D rb;
+        private float moveInput;
+        private bool isGrounded;
+        private float coyoteCounter;
+        private float jumpBufferCounter;
+        private bool isDashing;
+        private float dashTimer;
+        private float dashCooldownTimer;
+        private Vector2 dashDirection;
+        private Vector3 checkpointPosition;
+        private int currentHealth;
+        private float originalGravityScale;
+
+        public int CurrentHealth => currentHealth;
+
+        private void Awake()
         {
-            SnapCameraToPlayer();
-        }
-    }
-
-    private void Update()
-    {
-        horizontal = Input.GetAxisRaw("Horizontal");
-
-        if (Input.GetButtonDown("Jump"))
-        {
-            jumpBuffered = true;
-        }
-
-        if (Input.GetKeyDown(KeyCode.LeftShift) && dashCooldownTimer <= 0f && !isDashing)
-        {
-            StartDash();
-        }
-
-        if (dashCooldownTimer > 0f)
-        {
-            dashCooldownTimer -= Time.deltaTime;
-        }
-
-        UpdateFacingDirection();
-    }
-
-    private void FixedUpdate()
-    {
-        CheckGrounded();
-        CheckFallBoundary();
-
-        if (isDashing)
-        {
-            UpdateDash();
-            return;
+            rb = GetComponent<Rigidbody2D>();
+            originalGravityScale = rb.gravityScale;
+            checkpointPosition = transform.position;
+            currentHealth = maxHealth;
         }
 
-        HandleMove();
-        HandleJump();
-    }
-
-    private void LateUpdate()
-    {
-        if (!autoFollowMainCamera)
+        private void Update()
         {
-            return;
-        }
+            moveInput = Input.GetAxisRaw("Horizontal");
 
-        if (mainCam == null)
-        {
-            mainCam = Camera.main;
-        }
-
-        if (mainCam != null)
-        {
-            Vector3 targetPos = transform.position + cameraOffset;
-            targetPos.z = cameraOffset.z;
-            mainCam.transform.position = Vector3.Lerp(mainCam.transform.position, targetPos, 10f * Time.deltaTime);
-        }
-    }
-
-    private void SnapCameraToPlayer()
-    {
-        if (mainCam == null)
-        {
-            mainCam = Camera.main;
-        }
-
-        if (mainCam != null)
-        {
-            Vector3 targetPos = transform.position + cameraOffset;
-            targetPos.z = cameraOffset.z;
-            mainCam.transform.position = targetPos;
-        }
-    }
-
-    private void HandleMove()
-    {
-        float speedMultiplier = grounded ? 1f : airControlMultiplier;
-        rb.linearVelocity = new Vector2(horizontal * moveSpeed * speedMultiplier, rb.linearVelocity.y);
-    }
-
-    private void HandleJump()
-    {
-        if (!jumpBuffered)
-        {
-            return;
-        }
-
-        if (grounded)
-        {
-            Jump();
-            airJumpCount = 0;
-        }
-        else if (airJumpCount < 1)
-        {
-            Jump();
-            airJumpCount++;
-        }
-
-        jumpBuffered = false;
-    }
-
-    private void Jump()
-    {
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-    }
-
-    private void StartDash()
-    {
-        isDashing = true;
-        dashTimer = dashDuration;
-        dashCooldownTimer = dashCooldown;
-        dashDirection = Mathf.Abs(horizontal) > 0.01f ? Mathf.Sign(horizontal) : (IsFacingRight ? 1f : -1f);
-    }
-
-    private void UpdateDash()
-    {
-        dashTimer -= Time.fixedDeltaTime;
-        rb.linearVelocity = new Vector2(dashDirection * dashSpeed, 0f);
-
-        if (dashTimer <= 0f)
-        {
-            isDashing = false;
-        }
-    }
-
-    private void CheckGrounded()
-    {
-        if (groundCheck == null)
-        {
-            grounded = false;
-            return;
-        }
-
-        bool wasGrounded = grounded;
-        grounded = false;
-
-        Collider2D[] hits = Physics2D.OverlapCircleAll(groundCheck.position, groundCheckRadius, groundMask);
-        for (int i = 0; i < hits.Length; i++)
-        {
-            Collider2D hit = hits[i];
-            if (hit == null)
+            if (Input.GetButtonDown("Jump"))
             {
-                continue;
+                jumpBufferCounter = jumpBufferTime;
+            }
+            else
+            {
+                jumpBufferCounter -= Time.deltaTime;
             }
 
-            bool isSelf = false;
-            for (int j = 0; j < selfColliders.Length; j++)
+            if (dashCooldownTimer > 0f)
             {
-                if (hit == selfColliders[j])
+                dashCooldownTimer -= Time.deltaTime;
+            }
+
+            if (Input.GetKeyDown(KeyCode.LeftShift) && !isDashing && dashCooldownTimer <= 0f)
+            {
+                StartDash();
+            }
+        }
+
+        private void FixedUpdate()
+        {
+            if (groundCheck == null)
+            {
+                return;
+            }
+
+            isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+
+            if (isGrounded)
+            {
+                coyoteCounter = coyoteTime;
+            }
+            else
+            {
+                coyoteCounter -= Time.fixedDeltaTime;
+            }
+
+            if (isDashing)
+            {
+                UpdateDash();
+                return;
+            }
+
+            ApplyHorizontalMovement();
+            TryJump();
+        }
+
+        private void ApplyHorizontalMovement()
+        {
+            float control = isGrounded ? 1f : airControlMultiplier;
+            rb.linearVelocity = new Vector2(moveInput * moveSpeed * control, rb.linearVelocity.y);
+        }
+
+        private void TryJump()
+        {
+            if (jumpBufferCounter > 0f && coyoteCounter > 0f)
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                jumpBufferCounter = 0f;
+                coyoteCounter = 0f;
+            }
+        }
+
+        private void StartDash()
+        {
+            isDashing = true;
+            dashTimer = dashDuration;
+            dashCooldownTimer = dashCooldown;
+
+            float horizontalDirection = Mathf.Abs(moveInput) > 0.01f ? Mathf.Sign(moveInput) : transform.localScale.x >= 0f ? 1f : -1f;
+            dashDirection = new Vector2(horizontalDirection, 0f);
+            rb.gravityScale = 0f;
+            rb.linearVelocity = dashDirection * dashSpeed;
+        }
+
+        private void UpdateDash()
+        {
+            dashTimer -= Time.fixedDeltaTime;
+            rb.linearVelocity = dashDirection * dashSpeed;
+
+            if (dashTimer <= 0f)
+            {
+                isDashing = false;
+                rb.gravityScale = originalGravityScale;
+            }
+        }
+
+        public void ApplySinPenalty(int damage, bool forceCheckpointRespawn)
+        {
+            if (damage > 0)
+            {
+                currentHealth -= damage;
+            }
+
+            if (currentHealth <= 0)
+            {
+                currentHealth = 0;
+
+                if (GameFlowManager.Instance != null)
                 {
-                    isSelf = true;
-                    break;
+                    GameFlowManager.Instance.LoadDefeat();
                 }
+                else
+                {
+                    RespawnAtCheckpoint();
+                }
+
+                return;
             }
 
-            if (!isSelf)
+            if (forceCheckpointRespawn)
             {
-                grounded = true;
-                break;
+                RespawnAtCheckpoint();
             }
         }
 
-        if (!wasGrounded && grounded)
+        public void SetCheckpoint(Vector3 checkpoint)
         {
-            airJumpCount = 0;
+            checkpointPosition = checkpoint;
         }
-    }
 
-    private void CheckFallBoundary()
-    {
-        if (transform.position.y < deathYThreshold)
+        public void RespawnAtCheckpoint()
         {
-            UnityEngine.SceneManagement.SceneManager.LoadScene(
-                UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+            transform.position = checkpointPosition;
+            rb.linearVelocity = Vector2.zero;
+            currentHealth = maxHealth;
+            isDashing = false;
+            rb.gravityScale = originalGravityScale;
         }
-    }
-
-    private void UpdateFacingDirection()
-    {
-        if (horizontal > 0.01f && !IsFacingRight)
-        {
-            Flip();
-        }
-        else if (horizontal < -0.01f && IsFacingRight)
-        {
-            Flip();
-        }
-    }
-
-    private void Flip()
-    {
-        IsFacingRight = !IsFacingRight;
-        Vector3 scale = transform.localScale;
-        scale.x *= -1f;
-        transform.localScale = scale;
-    }
-
-    public float FacingSign()
-    {
-        return IsFacingRight ? 1f : -1f;
     }
 }
