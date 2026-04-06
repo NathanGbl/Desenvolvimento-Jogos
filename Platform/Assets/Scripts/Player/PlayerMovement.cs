@@ -22,17 +22,22 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private bool autoFollowMainCamera = true;
     [SerializeField] private Vector3 cameraOffset = new Vector3(0f, 0.8f, -10f);
 
+    [Header("Fall Boundary")]
+    [SerializeField] private float deathYThreshold = -10f;
+
     private Rigidbody2D rb;
+    private Camera mainCam;
+    private Collider2D[] selfColliders;
+
     private float horizontal;
     private bool jumpBuffered;
     private bool grounded;
-    private bool canDoubleJump;
+    private int airJumpCount;
 
     private bool isDashing;
     private float dashTimer;
     private float dashCooldownTimer;
     private float dashDirection;
-    private Camera mainCam;
 
     public bool IsFacingRight { get; private set; } = true;
     public bool IsDashing => isDashing;
@@ -44,6 +49,7 @@ public class PlayerMovement : MonoBehaviour
         rb.gravityScale = 3f;
         rb.freezeRotation = true;
 
+        selfColliders = GetComponentsInChildren<Collider2D>();
         mainCam = Camera.main;
     }
 
@@ -80,6 +86,7 @@ public class PlayerMovement : MonoBehaviour
     private void FixedUpdate()
     {
         CheckGrounded();
+        CheckFallBoundary();
 
         if (isDashing)
         {
@@ -142,16 +149,12 @@ public class PlayerMovement : MonoBehaviour
         if (grounded)
         {
             Jump();
-            canDoubleJump = true;
+            airJumpCount = 0;
         }
-        else
+        else if (airJumpCount < 1)
         {
-            bool canUseDoubleJump = VirtueSystem.Instance != null && VirtueSystem.Instance.HasDoubleJump;
-            if (canUseDoubleJump && canDoubleJump)
-            {
-                Jump();
-                canDoubleJump = false;
-            }
+            Jump();
+            airJumpCount++;
         }
 
         jumpBuffered = false;
@@ -190,11 +193,46 @@ public class PlayerMovement : MonoBehaviour
         }
 
         bool wasGrounded = grounded;
-        grounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundMask);
+        grounded = false;
+
+        Collider2D[] hits = Physics2D.OverlapCircleAll(groundCheck.position, groundCheckRadius, groundMask);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D hit = hits[i];
+            if (hit == null)
+            {
+                continue;
+            }
+
+            bool isSelf = false;
+            for (int j = 0; j < selfColliders.Length; j++)
+            {
+                if (hit == selfColliders[j])
+                {
+                    isSelf = true;
+                    break;
+                }
+            }
+
+            if (!isSelf)
+            {
+                grounded = true;
+                break;
+            }
+        }
 
         if (!wasGrounded && grounded)
         {
-            canDoubleJump = true;
+            airJumpCount = 0;
+        }
+    }
+
+    private void CheckFallBoundary()
+    {
+        if (transform.position.y < deathYThreshold)
+        {
+            UnityEngine.SceneManagement.SceneManager.LoadScene(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
         }
     }
 

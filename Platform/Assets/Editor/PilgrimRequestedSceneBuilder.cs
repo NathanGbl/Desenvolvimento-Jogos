@@ -54,6 +54,7 @@ public static class PilgrimRequestedSceneBuilder
         scene.name = StartScene;
 
         CreateCamera(new Color(0.02f, 0.02f, 0.06f));
+        CreateStainedGlassBackground();
         CreateEventSystem();
 
         GameObject canvas = CreateCanvas("StartCanvas");
@@ -77,6 +78,7 @@ public static class PilgrimRequestedSceneBuilder
         scene.name = GameplayScene;
 
         CreateCamera(new Color(0.04f, 0.04f, 0.09f));
+        CreateStainedGlassBackground();
 
         GameObject systems = new GameObject("Systems");
         systems.AddComponent<VirtueSystem>();
@@ -112,6 +114,7 @@ public static class PilgrimRequestedSceneBuilder
         scene.name = SanctuaryScene;
 
         CreateCamera(new Color(0.12f, 0.1f, 0.03f));
+        CreateStainedGlassBackground();
         CreateEventSystem();
 
         GameObject canvas = CreateCanvas("SanctuaryCanvas");
@@ -140,6 +143,27 @@ public static class PilgrimRequestedSceneBuilder
 
         camObj.AddComponent<AudioListener>();
         return cam;
+    }
+
+    private static void CreateStainedGlassBackground()
+    {
+        string tilesFolder = "Assets/Tiles/";
+        Texture2D panel01 = AssetDatabase.LoadAssetAtPath<Texture2D>(tilesFolder + "Église_Saint-Jacques-et-Saint-Christophe_de_la_Villette,_vitrail_du_chœur_01.jpg");
+        Texture2D panel04 = AssetDatabase.LoadAssetAtPath<Texture2D>(tilesFolder + "Église_Saint-Jacques-et-Saint-Christophe_de_la_Villette,_vitrail_du_chœur_04.jpg");
+        Texture2D panel07 = AssetDatabase.LoadAssetAtPath<Texture2D>(tilesFolder + "Église_Saint-Jacques-et-Saint-Christophe_de_la_Villette,_vitrail_du_chœur_07.jpg");
+
+        if (panel01 == null || panel04 == null || panel07 == null)
+        {
+            return;
+        }
+
+        GameObject vitral = new GameObject("VitralBackground");
+        vitral.transform.position = new Vector3(-3f, 0f, 0f);
+
+        StainedGlassBackground background = vitral.AddComponent<StainedGlassBackground>();
+        SetPrivateTexture(background, "panel01", panel01);
+        SetPrivateTexture(background, "panel04", panel04);
+        SetPrivateTexture(background, "panel07", panel07);
     }
 
     private static void CreateEventSystem()
@@ -394,6 +418,15 @@ public static class PilgrimRequestedSceneBuilder
     }
 
     private static void SetPrivateBool(object target, string field, bool value)
+    {
+        var info = target.GetType().GetField(field, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (info != null)
+        {
+            info.SetValue(target, value);
+        }
+    }
+
+    private static void SetPrivateTexture(object target, string field, Texture2D value)
     {
         var info = target.GetType().GetField(field, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
         if (info != null)
