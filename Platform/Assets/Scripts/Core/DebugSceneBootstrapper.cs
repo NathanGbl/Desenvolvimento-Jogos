@@ -3,6 +3,7 @@ using OCaminhoDoPeregrino.Player;
 using OCaminhoDoPeregrino.World;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Tilemaps;
 
 namespace OCaminhoDoPeregrino.Core
 {
@@ -69,27 +70,242 @@ namespace OCaminhoDoPeregrino.Core
                 return;
 
             lastComposedScene = scene.name;
-            Debug.Log($"[DebugSceneBootstrapper] Composing scene: {scene.name}");
             EnsureManagers();
-            EnsureCamera();
-            EnsureRuntimeRoot();
+            CleanupGeneratedRuntimeObjects();
+            CleanupLegacyGeneratedObjects();
+            EnsureAuthoredPlayerBinding();
+            EnsureCameraForExistingPlayerOnly();
+        }
 
-            switch (scene.name)
+        private static bool HasAuthoredSceneContent()
+        {
+            if (FindAnyObjectByType<Tilemap>() != null)
             {
-                case "Level_01":
-                case "SampleScene":
-                    BuildLevelOne();
-                    break;
-                case "Level_02":
-                    BuildLevelTwo();
-                    break;
-                case "Victory":
-                    BuildVictoryScene();
-                    break;
-                case "Defeat":
-                    BuildDefeatScene();
-                    break;
+                return true;
             }
+
+            if (GameObject.FindWithTag("Player") != null)
+            {
+                return true;
+            }
+
+            if (FindAnyObjectByType<PlayerMovement>() != null)
+            {
+                return true;
+            }
+
+            if (FindAnyObjectByType<RelicCollectible>() != null ||
+                FindAnyObjectByType<SinHazard>() != null ||
+                FindAnyObjectByType<SceneGatewayPortal>() != null ||
+                FindAnyObjectByType<VirtueAltar>() != null)
+            {
+                return true;
+            }
+
+            // If the scene already has multiple sprites, assume visuals were authored in Unity.
+            SpriteRenderer[] renderers = Object.FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
+            return renderers != null && renderers.Length > 3;
+        }
+
+        private void EnsureAuthoredPlayerBinding()
+        {
+            GameObject namedPlayer = GameObject.Find("Player");
+            if (namedPlayer != null)
+            {
+                BindPlayerObject(namedPlayer.transform.root.gameObject);
+                return;
+            }
+
+            PlayerMovement existingMovement = FindAnyObjectByType<PlayerMovement>();
+            if (existingMovement != null)
+            {
+                if (!existingMovement.CompareTag("Player"))
+                {
+                    existingMovement.tag = "Player";
+                }
+
+                EnsureGroundCheck(existingMovement.gameObject, existingMovement);
+                return;
+            }
+
+            GameObject visualPlayer = FindAuthoredPlayerVisual();
+            if (visualPlayer == null)
+            {
+                return;
+            }
+
+            BindPlayerObject(visualPlayer.transform.root.gameObject);
+        }
+
+        private static void BindPlayerObject(GameObject playerObject)
+        {
+            if (!playerObject.CompareTag("Player"))
+            {
+                playerObject.tag = "Player";
+            }
+
+            Rigidbody2D rb = playerObject.GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                rb = playerObject.AddComponent<Rigidbody2D>();
+            }
+
+            rb.gravityScale = 3.2f;
+            rb.freezeRotation = true;
+
+            Collider2D collider = playerObject.GetComponent<Collider2D>();
+            if (collider == null)
+            {
+                BoxCollider2D box = playerObject.AddComponent<BoxCollider2D>();
+                box.size = new Vector2(0.8f, 1.4f);
+            }
+
+            PlayerMovement movement = playerObject.GetComponent<PlayerMovement>();
+            if (movement == null)
+            {
+                movement = playerObject.AddComponent<PlayerMovement>();
+            }
+
+            EnsureGroundCheck(playerObject, movement);
+        }
+
+        private static GameObject FindAuthoredPlayerVisual()
+        {
+            SpriteRenderer[] renderers = Object.FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                GameObject go = renderers[i].gameObject;
+                string name = go.name.ToLowerInvariant();
+
+                if (name.Contains("player") || name.Contains("peregrino") || name.Contains("trainee"))
+                {
+                    return go;
+                }
+            }
+
+            return null;
+        }
+
+        private static void EnsureGroundCheck(GameObject playerObject, PlayerMovement movement)
+        {
+            Transform groundCheck = playerObject.transform.Find("GroundCheck");
+            if (groundCheck == null)
+            {
+                GameObject groundCheckObject = new GameObject("GroundCheck");
+                groundCheck = groundCheckObject.transform;
+                groundCheck.SetParent(playerObject.transform, false);
+                groundCheck.localPosition = new Vector3(0f, -0.8f, 0f);
+            }
+
+            var groundCheckField = typeof(PlayerMovement).GetField("groundCheck", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (groundCheckField != null)
+            {
+                groundCheckField.SetValue(movement, groundCheck);
+            }
+
+            var groundLayerField = typeof(PlayerMovement).GetField("groundLayer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (groundLayerField != null)
+            {
+                int groundLayerIndex = LayerMask.NameToLayer("Ground");
+                int defaultLayerIndex = LayerMask.NameToLayer("Default");
+                int maskValue = 0;
+
+                if (groundLayerIndex >= 0)
+                {
+                    maskValue |= 1 << groundLayerIndex;
+                }
+
+                if (defaultLayerIndex >= 0)
+                {
+                    maskValue |= 1 << defaultLayerIndex;
+                }
+
+                LayerMask groundLayerMask = new LayerMask();
+                groundLayerMask.value = maskValue;
+                groundLayerField.SetValue(movement, groundLayerMask);
+            }
+        }
+
+        private void CleanupGeneratedRuntimeObjects()
+        {
+            if (runtimeRoot == null)
+            {
+                GameObject root = GameObject.Find("__DebugRuntimeRoot");
+                if (root == null)
+                {
+                    return;
+                }
+
+                runtimeRoot = root;
+            }
+
+            int childCount = runtimeRoot.transform.childCount;
+            for (int i = childCount - 1; i >= 0; i--)
+            {
+                Destroy(runtimeRoot.transform.GetChild(i).gameObject);
+            }
+        }
+
+        private void CleanupLegacyGeneratedObjects()
+        {
+            // Remove old debug backdrop if it leaked outside __DebugRuntimeRoot.
+            GameObject backdrop = GameObject.Find("Backdrop");
+            if (backdrop != null)
+            {
+                Destroy(backdrop);
+            }
+
+            // Remove gray procedural grounds that can block the authored tilemap floor.
+            SpriteRenderer[] renderers = Object.FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                GameObject go = renderers[i].gameObject;
+                if (!go.name.StartsWith("Ground"))
+                {
+                    continue;
+                }
+
+                if (go.GetComponent<Tilemap>() != null || go.GetComponent<TilemapRenderer>() != null)
+                {
+                    continue;
+                }
+
+                if (go.GetComponent<Collider2D>() != null)
+                {
+                    Destroy(go);
+                }
+            }
+
+        }
+
+        private void EnsureCameraForExistingPlayerOnly()
+        {
+            CleanupExtraAudioListeners();
+
+            Camera camera = Camera.main;
+            if (camera == null)
+            {
+                return;
+            }
+
+            if (camera.GetComponent<AudioListener>() == null)
+            {
+                camera.gameObject.AddComponent<AudioListener>();
+            }
+
+            PlayerMovement player = FindAnyObjectByType<PlayerMovement>();
+            if (player == null)
+            {
+                return;
+            }
+
+            CameraFollow2D follow = camera.GetComponent<CameraFollow2D>();
+            if (follow == null)
+            {
+                follow = camera.gameObject.AddComponent<CameraFollow2D>();
+            }
+
+            follow.SetTarget(player.transform);
         }
 
         private static bool IsSupportedScene(string sceneName)
@@ -122,13 +338,13 @@ namespace OCaminhoDoPeregrino.Core
 
         private void EnsureManagers()
         {
-            if (FindObjectOfType<VirtueManager>() == null)
+            if (FindAnyObjectByType<VirtueManager>() == null)
                 new GameObject("VirtueManager").AddComponent<VirtueManager>();
 
-            if (FindObjectOfType<GameFlowManager>() == null)
+            if (FindAnyObjectByType<GameFlowManager>() == null)
                 new GameObject("GameFlowManager").AddComponent<GameFlowManager>();
 
-            if (FindObjectOfType<StageObjectiveManager>() == null)
+            if (FindAnyObjectByType<StageObjectiveManager>() == null)
                 new GameObject("StageObjectiveManager").AddComponent<StageObjectiveManager>();
         }
 
@@ -162,14 +378,14 @@ namespace OCaminhoDoPeregrino.Core
 
         private void CleanupExtraAudioListeners()
         {
-            AudioListener[] listeners = FindObjectsOfType<AudioListener>();
+            AudioListener[] listeners = Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None);
             for (int i = listeners.Length - 1; i >= 1; i--)
                 Destroy(listeners[i]);
         }
 
         private GameObject GetOrCreatePlayer()
         {
-            PlayerMovement existingPlayer = FindObjectOfType<PlayerMovement>();
+            PlayerMovement existingPlayer = FindAnyObjectByType<PlayerMovement>();
             if (existingPlayer != null)
                 return existingPlayer.gameObject;
 

@@ -1,3 +1,4 @@
+using OCaminhoDoPeregrino.Core;
 using OCaminhoDoPeregrino.Player;
 using UnityEngine;
 
@@ -20,7 +21,7 @@ namespace OCaminhoDoPeregrino.World
 
         private void TryApplyPenalty(GameObject target)
         {
-            if (!target.CompareTag("Player"))
+            if (!PlayerTagUtility.IsPlayer(target))
             {
                 return;
             }

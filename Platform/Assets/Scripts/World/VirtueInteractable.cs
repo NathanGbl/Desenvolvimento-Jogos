@@ -49,7 +49,7 @@ namespace OCaminhoDoPeregrino.World
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (!other.CompareTag("Player"))
+            if (!PlayerTagUtility.IsPlayer(other))
             {
                 return;
             }
@@ -64,7 +64,7 @@ namespace OCaminhoDoPeregrino.World
 
         private void OnTriggerExit2D(Collider2D other)
         {
-            if (!other.CompareTag("Player"))
+            if (!PlayerTagUtility.IsPlayer(other))
             {
                 return;
             }

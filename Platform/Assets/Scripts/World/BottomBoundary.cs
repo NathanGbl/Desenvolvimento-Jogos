@@ -1,5 +1,6 @@
 using OCaminhoDoPeregrino.Player;
 using UnityEngine;
+using OCaminhoDoPeregrino.Core;
 
 namespace OCaminhoDoPeregrino.World
 {
@@ -7,7 +8,7 @@ namespace OCaminhoDoPeregrino.World
     {
         private void OnTriggerEnter2D(Collider2D collision)
         {
-            if (collision.CompareTag("Player"))
+            if (PlayerTagUtility.IsPlayer(collision.gameObject))
             {
                 PlayerMovement player = collision.GetComponent<PlayerMovement>();
                 if (player != null)

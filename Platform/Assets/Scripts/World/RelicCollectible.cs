@@ -19,7 +19,7 @@ namespace OCaminhoDoPeregrino.World
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (collected || !other.CompareTag("Player"))
+            if (collected || !PlayerTagUtility.IsPlayer(other))
             {
                 return;
             }
